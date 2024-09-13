@@ -19,7 +19,7 @@ fmtname(char *path)
   if(strlen(p) >= DIRSIZ)
     return p;
   memmove(buf, p, strlen(p));
-  //memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
+  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
   return buf;
 }
 
@@ -39,14 +39,13 @@ void find(char *path, char *target)
     close(fd);
     return;
   }
-  printf("%d\n", st.type);
 
 
   switch(st.type){
   case T_DEVICE:
   case T_FILE:
     printf("comparing %s %s %d\n", fmtname(path), target, strcmp(fmtname(path), target));
-    if (strcmp(fmtname(path), target) == 0) {
+    if (strcmp(fmtname(path), fmtname(target)) == 0) {
         printf("match %s %s\n", fmtname(path), target);
         break;
     }
@@ -68,16 +67,17 @@ void find(char *path, char *target)
         printf("ls: cannot stat %s\n", buf);
         continue;
       }
-      char root[14] = ".";
-      char prev[14] = "..";
+      char root[14] = ".             ";
+      char prev[14] = "..            ";
 
-      printf("%s", fmtname(buf));
       if (st.type == T_DIR && strcmp(fmtname(buf), root) != 0 && strcmp(fmtname(buf), prev) != 0) {
         find(buf, target);
-      } else if (strcmp(fmtname(buf), target) == 0) {
-        printf("match %s %s\n", buf, target);
-
+      } else {
+        if (strcmp(p, target) == 0) {
+          printf("%s\n", buf);
+        }
       }
+      
     }
   }
   close(fd);
