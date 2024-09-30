@@ -29,27 +29,20 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  superfreerange(end, end + 4*SUPER_PGSIZE);
-  freerange(end + 4*SUPER_PGSIZE, (void*)PHYSTOP);
-
+  freerange(end, (void*)PHYSTOP);
 }
 
 void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
+  /*
+  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
+  for(; p + SUPERPGSIZE <= p + SUPERPGSIZE*4; p += SUPERPGSIZE)
+    superfree(p);*/
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
-}
-
-void
-superfreerange(void *pa_start, void *pa_end)
-{
-  char *p;
-  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
-  for(; p + SUPER_PGSIZE <= (char*)pa_end; p += SUPER_PGSIZE)
-    superfree(p);
 }
 
 // Free the page of physical memory pointed at by pa,
