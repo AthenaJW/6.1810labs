@@ -339,34 +339,29 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
 uint64
 uvmallocn(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
-  char *mem;
+  char* mem;
   uint64 a;
-  int sz;
+  pte_t* pte;
 
-  if(newsz < oldsz)
-    return oldsz;
-
-  oldsz = SUPERPGROUNDUP(oldsz);
-  for(a = oldsz; a < newsz; a += sz){
-
-    sz = SUPERPGSIZE;
+  if ((a % SUPERPGSIZE) == 0 && (newsz - a >= SUPERPGSIZE)){
     mem = superalloc();
     if(mem == 0){
       uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
-#ifndef LAB_SYSCALL
-    memset(mem, 0, sz);
-#endif
-    if(walkallocn(pagetable, a) == 0){
+    memset(mem, 0, SUPERPGSIZE);
+
+    // find the pte for this virtual address, walkallocn is a special function that allocates a
+    // pte at L1
+    if ((pte = walkallocn(pagetable, a)) == 0) {
       superfree(mem);
-      uvmdealloc(pagetable, a, oldsz);
       return 0;
     }
+    // set the permissions to match a leaf page
+    *pte = PA2PTE(mem) | xperm | (PTE_R & PTE_W & PTE_X);
   }
   return newsz;
 }
-
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
 // need to be less than oldsz.  oldsz can be larger than the actual
