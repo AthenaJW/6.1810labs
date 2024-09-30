@@ -159,7 +159,7 @@ walkallocn(pagetable_t pagetable, uint64 va)
       }
 #endif
     } else {
-      memset(pagetable, 0, PGSIZE);
+      memset(pagetable, 0, SUPERPGSIZE);
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
@@ -313,13 +313,11 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
   oldsz = PGROUNDUP(oldsz);
   for(a = oldsz; a < newsz; a += sz){
-    // attempt to allocate a superpage
-    /*
-    if (uvmallocn()) {
+
+    if ((uvmallocn(pagetable, a, newsz, xperm)) != 0) {
+      sz = SUPERPGSIZE;
       continue;
     }
-    */
-
 
     sz = PGSIZE;
     mem = kalloc();
@@ -341,28 +339,29 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
 uint64
 uvmallocn(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
-  char* mem;
+  char *mem;
   uint64 a;
-  pte_t* pte;
   int sz;
-  for(a = oldsz; a < newsz; a += sz){
-    sz = SUPERPGSIZE;
-    if ((a % SUPERPGSIZE) == 0 && (newsz - a >= SUPERPGSIZE)){
-      mem = superalloc();
-      if(mem == 0){
-        uvmdealloc(pagetable, a, oldsz);
-        return 0;
-      }
-      memset(mem, 0, SUPERPGSIZE);
 
-      // find the pte for this virtual address, walkallocn is a special function that allocates a
-      // pte at L1
-      if ((pte = walkallocn(pagetable, a)) == 0) {
-        superfree(mem);
-        return 0;
-      }
-      // set the permissions to match a leaf page
-      *pte = PA2PTE(mem) | xperm | (PTE_R & PTE_W & PTE_X);
+  if(newsz < oldsz)
+    return oldsz;
+
+  oldsz = SUPERPGROUNDUP(oldsz);
+  for(a = oldsz; a < newsz; a += sz){
+
+    sz = SUPERPGSIZE;
+    mem = superalloc();
+    if(mem == 0){
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }
+#ifndef LAB_SYSCALL
+    memset(mem, 0, sz);
+#endif
+    if(walkallocn(pagetable, a) == 0){
+      superfree(mem);
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
     }
   }
   return newsz;

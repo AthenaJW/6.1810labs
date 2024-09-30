@@ -29,17 +29,25 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  superfreerange(end, end + SUPERPGSIZE*4);
+  freerange(end + SUPERPGSIZE*4, (void*)PHYSTOP);
+}
+
+void
+superfreerange(void *pa_start, void *pa_end)
+{
+  char *p;
+  
+  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
+  for(; p + SUPERPGSIZE <= (char*)pa_end; p += SUPERPGSIZE)
+    superfree(p);
 }
 
 void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  /*
-  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
-  for(; p + SUPERPGSIZE <= p + SUPERPGSIZE*4; p += SUPERPGSIZE)
-    superfree(p);*/
+  
   p = (char*)PGROUNDUP((uint64)pa_start);
   for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
     kfree(p);
