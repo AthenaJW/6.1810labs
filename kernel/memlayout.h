@@ -51,6 +51,9 @@
 // each surrounded by invalid guard pages.
 #define KSTACK(p) (TRAMPOLINE - (p)*2*PGSIZE - 3*PGSIZE)
 
+// define superpage size
+#define SUPER_PGSIZE PGSIZE*512
+
 // User memory layout.
 // Address zero first:
 //   text

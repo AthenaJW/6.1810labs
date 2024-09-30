@@ -1,0 +1,16 @@
+va 0x0 pte 0x21FC885B pa 0x87F22000 perm 0x5B
+va 0x1000 pte 0x21FC7C1B pa 0x87F1F000 perm 0x1B
+va 0x2000 pte 0x21FC7817 pa 0x87F1E000 perm 0x17
+va 0x3000 pte 0x21FC7407 pa 0x87F1D000 perm 0x7
+va 0x4000 pte 0x21FC70D7 pa 0x87F1C000 perm 0xD7
+
+The first five two elements have read execute permissions, which lines up with the text section.
+I think the next element (0x2000) is the data, since it has read write permission.
+I think the next element (0x3000) is the guard page, since it doesn't seem to have valid permissions.
+The next element (0x4000) should be a stack, since it has read write permission.
+
+There is a lot of virtual addresses that don't map anywhere in the physical address space after this.
+This is because this is the heap/unused, which doesn't get a physical address until there is space on the heap allocated.
+
+The second to last one is the trapframe, because it has read write permission.
+The last one is the trampoline, because it has read execute position.
