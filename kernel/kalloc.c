@@ -29,8 +29,8 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  superfreerange(end, end + 10*SUPER_PGSIZE);
-  freerange(end + 10*SUPER_PGSIZE, (void*)PHYSTOP);
+  superfreerange(end, end + 4*SUPER_PGSIZE);
+  freerange(end + 4*SUPER_PGSIZE, (void*)PHYSTOP);
 
 }
 
