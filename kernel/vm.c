@@ -118,25 +118,22 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
 }
 
 pte_t *
-walkn(pagetable_t pagetable, uint64 va, int alloc)
+walkn(pagetable_t pagetable, uint64 va, int *l)
 {
   if(va >= MAXVA)
-    panic("walk");
+    panic("super walk");
 
-  for(int level = 2; level > 1; level--) {
+  for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
-#ifdef LAB_PGTBL
+
       if(PTE_LEAF(*pte)) {
+        *l = level;
         return pte;
       }
-#endif
     } else {
-      if(!alloc || (pagetable = (pde_t*)kalloc()) == 0)
-        return 0;
-      memset(pagetable, 0, PGSIZE);
-      *pte = PA2PTE(pagetable) | PTE_V;
+      return 0;
     }
   }
   return &pagetable[PX(1, va)];
@@ -147,19 +144,16 @@ pte_t *
 walkallocn(pagetable_t pagetable, uint64 va)
 {
   if(va >= MAXVA)
-    panic("walk");
+    panic("walkallocn");
 
   for(int level = 2; level > 1; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
-#ifdef LAB_PGTBL
-      if(PTE_LEAF(*pte)) {
-        return pte;
-      }
-#endif
     } else {
-      memset(pagetable, 0, SUPERPGSIZE);
+      if ((pagetable = (pde_t*)kalloc()) == 0)
+        return 0;
+      memset(pagetable, 0, PGSIZE);
       *pte = PA2PTE(pagetable) | PTE_V;
     }
   }
@@ -252,8 +246,19 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
   for(a = va; a < va + npages*PGSIZE; a += sz){
     sz = PGSIZE;
     // see if there's a superpage using walkn
-    // if ((pte = walkn(pagetable, )))
-    if((pte = walk(pagetable, a, 0)) == 0)
+    int l = 0;
+    if ((pte = walkn(pagetable, a, &l)) == 0)
+      panic("uvmunmap: walk");
+    
+    // the case if it's a superpage, continue after, otherwise keep going
+    if (l > 0) {
+      sz = SUPERPGSIZE;
+      uint64 pa = PTE2PA(*pte);
+      superfree((void*) pa);
+      *pte = 0;
+      continue;
+    }
+    if ((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0) {
       printf("va=%ld pte=%ld\n", a, *pte);
@@ -313,9 +318,7 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 
   oldsz = PGROUNDUP(oldsz);
   for(a = oldsz; a < newsz; a += sz){
-
-    if ((uvmallocn(pagetable, a, newsz, xperm)) != 0) {
-      sz = SUPERPGSIZE;
+    if ((sz = uvmallocn(pagetable, a, newsz, xperm)) != 0) {
       continue;
     }
 
@@ -338,15 +341,12 @@ uvmalloc(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm)
 }
 
 uint64
-uvmallocn(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
+uvmallocn(pagetable_t pagetable, uint64 a, uint64 newsz, int xperm) {
   char* mem;
-  uint64 a;
   pte_t* pte;
 
-  if ((a % SUPERPGSIZE) == 0 && (newsz - a >= SUPERPGSIZE)){
-    mem = superalloc();
-    if(mem == 0){
-      uvmdealloc(pagetable, a, oldsz);
+  if (((a % SUPERPGSIZE) == 0) && (newsz - a >= SUPERPGSIZE)){
+    if((mem = superalloc()) == 0){
       return 0;
     }
     memset(mem, 0, SUPERPGSIZE);
@@ -354,13 +354,16 @@ uvmallocn(pagetable_t pagetable, uint64 oldsz, uint64 newsz, int xperm) {
     // find the pte for this virtual address, walkallocn is a special function that allocates a
     // pte at L1
     if ((pte = walkallocn(pagetable, a)) == 0) {
+      printf("hello?");
       superfree(mem);
       return 0;
     }
     // set the permissions to match a leaf page
-    *pte = PA2PTE(mem) | xperm | (PTE_R & PTE_W & PTE_X);
+    *pte = PA2PTE(mem) | xperm | (PTE_R | PTE_W | PTE_X);
+    return SUPERPGSIZE;
   }
-  return newsz;
+  return 0;
+  
 }
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
@@ -426,8 +429,12 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   int szinc;
 
   for(i = 0; i < sz; i += szinc){
+
+    if ((szinc = uvmcopyn(old, new, i)) != 0) {
+      continue;
+    }
     szinc = PGSIZE;
-    szinc = PGSIZE;
+
     if((pte = walk(old, i, 0)) == 0)
       panic("uvmcopy: pte should exist");
     if((*pte & PTE_V) == 0)
@@ -447,6 +454,34 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
  err:
   uvmunmap(new, 0, i / PGSIZE, 1);
   return -1;
+}
+
+int
+uvmcopyn(pagetable_t old, pagetable_t new, uint64 va)
+{
+  pte_t *pte;
+  uint64 pa;
+  uint flags;
+  char *mem;
+  int l=0;
+
+  if((pte = walkn(old, va, &l)) == 0)
+    return 0;
+  if (l > 0) {
+    pa = PTE2PA(*pte);
+    flags = PTE_FLAGS(*pte);
+    if((mem = superalloc()) == 0)
+      return 0;
+    memmove(mem, (char*)pa, SUPERPGSIZE);
+    if((pte = walkallocn(new, va)) == 0){
+      printf("hello");
+      superfree(mem);
+      return 0;
+    }
+    *pte = PA2PTE(mem) | flags | PTE_V;
+    return SUPERPGSIZE;
+  }
+  return 0;
 }
 
 // mark a PTE invalid for user access.

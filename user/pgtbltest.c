@@ -126,6 +126,7 @@ superpg_test()
   
   uint64 s = SUPERPGROUNDUP((uint64) end);
   supercheck(s);
+  
   /*
   if((pid = fork()) < 0) {
     err("fork");

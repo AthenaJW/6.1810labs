@@ -68,7 +68,7 @@ void*           kalloc(void);
 void            kfree(void *);
 void            kinit(void);
 void*           superalloc(void);
-void            superfree(void *);
+void*           superfree(void *);
 
 // log.c
 void            initlog(int, struct superblock*);
@@ -178,6 +178,7 @@ uint64          uvmalloc(pagetable_t, uint64, uint64, int);
 uint64          uvmallocn(pagetable_t, uint64, uint64, int);
 uint64          uvmdealloc(pagetable_t, uint64, uint64);
 int             uvmcopy(pagetable_t, pagetable_t, uint64);
+int             uvmcopyn(pagetable_t, pagetable_t, uint64);
 void            uvmfree(pagetable_t, uint64);
 void            uvmunmap(pagetable_t, uint64, uint64, int);
 void            uvmclear(pagetable_t, uint64);

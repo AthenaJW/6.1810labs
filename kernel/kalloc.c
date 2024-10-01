@@ -10,7 +10,6 @@
 #include "defs.h"
 
 void freerange(void *pa_start, void *pa_end);
-void superfreerange(void *pa_start, void *pa_end);
 
 extern char end[]; // first address after kernel.
                    // defined by kernel.ld.
@@ -29,18 +28,7 @@ void
 kinit()
 {
   initlock(&kmem.lock, "kmem");
-  superfreerange(end, end + SUPERPGSIZE*4);
-  freerange(end + SUPERPGSIZE*4, (void*)PHYSTOP);
-}
-
-void
-superfreerange(void *pa_start, void *pa_end)
-{
-  char *p;
-  
-  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
-  for(; p + SUPERPGSIZE <= (char*)pa_end; p += SUPERPGSIZE)
-    superfree(p);
+  freerange(end, (void*)PHYSTOP);
 }
 
 void
@@ -48,8 +36,17 @@ freerange(void *pa_start, void *pa_end)
 {
   char *p;
   
+  p = (char*)SUPERPGROUNDUP((uint64)pa_start);
+  for(int i = 0; i < 10; p += SUPERPGSIZE) {
+    if (p + SUPERPGSIZE <= (char*)pa_end) {
+      printf("%p", p);
+      superfree(p);
+    }
+    i++; 
+  }
   p = (char*)PGROUNDUP((uint64)pa_start);
-  for(; p + PGSIZE <= (char*)pa_end; p += PGSIZE)
+
+  for (; p+PGSIZE <= (char*)pa_end; p+= PGSIZE)
     kfree(p);
 }
 
@@ -119,13 +116,13 @@ superalloc(void)
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
-void
+void*
 superfree(void *pa)
 {
   struct run *r;
 
   if(((uint64)pa % SUPER_PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
-    panic("kfree");
+    panic("superfree");
 
   // Fill with junk to catch dangling refs.
   memset(pa, 1, SUPER_PGSIZE);
@@ -136,4 +133,5 @@ superfree(void *pa)
   r->next = kmem.superfreelist;
   kmem.superfreelist = r;
   release(&kmem.lock);
+  return (void*)r;
 }
