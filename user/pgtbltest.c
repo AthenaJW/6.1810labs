@@ -115,7 +115,7 @@ supercheck(uint64 s)
 void
 superpg_test()
 {
-  //int pid;
+  int pid;
   
   printf("superpg_test starting\n");
   testname = "superpg_test";
@@ -127,7 +127,7 @@ superpg_test()
   uint64 s = SUPERPGROUNDUP((uint64) end);
   supercheck(s);
   
-  /*
+  
   if((pid = fork()) < 0) {
     err("fork");
   } else if(pid == 0) {
@@ -139,6 +139,6 @@ superpg_test()
     if (status != 0) {
       exit(0);
     }
-  } */
+  }
   printf("superpg_test: OK\n");  
 }

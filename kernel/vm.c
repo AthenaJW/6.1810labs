@@ -127,12 +127,14 @@ walkn(pagetable_t pagetable, uint64 va, int *l)
     pte_t *pte = &pagetable[PX(level, va)];
     if(*pte & PTE_V) {
       pagetable = (pagetable_t)PTE2PA(*pte);
-
-      if(PTE_LEAF(*pte)) {
+      if (PTE_LEAF(*pte)) {
         *l = level;
         return pte;
       }
+
     } else {
+      printf("%d", level);
+      //panic("returning 0");
       return 0;
     }
   }
@@ -229,6 +231,31 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   }
   return 0;
 }
+
+/*
+int
+supermappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+{
+  pte_t *pte;
+
+  if((va % SUPERPGSIZE) != 0)
+    panic("supermappages: va not aligned");
+
+  if((size % SUPERPGSIZE) != 0)
+    panic("supermappages: size not aligned");
+
+  if(size == 0)
+    panic("mappages: size");
+  
+  int l = 1;
+  if((pte = walkn(pagetable, pa, &l)) == 0)
+    return -1;
+  if(*pte & PTE_V)
+    panic("mappages: remap");
+  *pte = PA2PTE(pa) | perm | PTE_V;
+
+  return 0;
+} */
 
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
@@ -354,16 +381,21 @@ uvmallocn(pagetable_t pagetable, uint64 a, uint64 newsz, int xperm) {
     // find the pte for this virtual address, walkallocn is a special function that allocates a
     // pte at L1
     if ((pte = walkallocn(pagetable, a)) == 0) {
-      printf("hello?");
       superfree(mem);
       return 0;
     }
+    /*
+    if(supermappages(pagetable, a, SUPERPGSIZE, (uint64)mem, PTE_R|PTE_U|xperm) != 0){
+      kfree(mem);
+      uvmdealloc(pagetable, a, oldsz);
+      return 0;
+    }*/
     // set the permissions to match a leaf page
-    *pte = PA2PTE(mem) | xperm | (PTE_R | PTE_W | PTE_X);
+    *pte = PA2PTE(mem) | xperm | (PTE_R | PTE_U | PTE_V);
+    printf("allocated superpage\n");
     return SUPERPGSIZE;
   }
   return 0;
-  
 }
 // Deallocate user pages to bring the process size from oldsz to
 // newsz.  oldsz and newsz need not be page-aligned, nor does newsz
