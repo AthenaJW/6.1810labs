@@ -131,6 +131,7 @@ superpg_test()
   if((pid = fork()) < 0) {
     err("fork");
   } else if(pid == 0) {
+    printf("fork test starting");
     supercheck(s);
     exit(0);
   } else {

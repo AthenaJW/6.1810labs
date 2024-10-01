@@ -232,31 +232,6 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
-/*
-int
-supermappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
-{
-  pte_t *pte;
-
-  if((va % SUPERPGSIZE) != 0)
-    panic("supermappages: va not aligned");
-
-  if((size % SUPERPGSIZE) != 0)
-    panic("supermappages: size not aligned");
-
-  if(size == 0)
-    panic("mappages: size");
-  
-  int l = 1;
-  if((pte = walkn(pagetable, pa, &l)) == 0)
-    return -1;
-  if(*pte & PTE_V)
-    panic("mappages: remap");
-  *pte = PA2PTE(pa) | perm | PTE_V;
-
-  return 0;
-} */
-
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -461,7 +436,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   int szinc;
 
   for(i = 0; i < sz; i += szinc){
-
+    szinc = PGSIZE;
     if ((szinc = uvmcopyn(old, new, i)) != 0) {
       continue;
     }
@@ -476,7 +451,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((mem = kalloc()) == 0)
       goto err;
     memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
+    if(mappages(new, i, szinc, (uint64)mem, flags) != 0){
       kfree(mem);
       goto err;
     }
@@ -491,11 +466,11 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
 int
 uvmcopyn(pagetable_t old, pagetable_t new, uint64 va)
 {
+  int l = 0;
   pte_t *pte;
   uint64 pa;
   uint flags;
   char *mem;
-  int l=0;
 
   if((pte = walkn(old, va, &l)) == 0)
     return 0;

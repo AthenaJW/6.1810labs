@@ -35,17 +35,17 @@ void
 freerange(void *pa_start, void *pa_end)
 {
   char *p;
-  
+
+  p = (char*)PGROUNDUP((uint64)pa_start);
   p = (char*)SUPERPGROUNDUP((uint64)pa_start);
+
   for(int i = 0; i < 10; p += SUPERPGSIZE) {
     if (p + SUPERPGSIZE <= (char*)pa_end) {
-      printf("%p", p);
       superfree(p);
     }
     i++; 
   }
-  p = (char*)PGROUNDUP((uint64)pa_start);
-
+  
   for (; p+PGSIZE <= (char*)pa_end; p+= PGSIZE)
     kfree(p);
 }
