@@ -67,11 +67,14 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     if (which_dev == 2) {
-      if (myproc() -> alarminterval > 0) {
-        myproc() -> alarminterval = myproc() -> alarminterval;
-      } else {
-        printf("putting this address into epc %p", myproc() -> handler_function);
+      if (myproc() -> tickspassed < myproc() -> alarminterval) {
+        myproc() -> tickspassed = myproc() -> tickspassed + 1;
+//        printf("alarm interval %d", myproc() -> alarminterval);
+      } else if (myproc()->handler_inuse == 0 && myproc() -> alarminterval > 0) {
+        myproc()->handler_inuse = 1;
+        save_registers();
         p->trapframe->epc = (uint64) myproc() -> handler_function;
+        // save the registers when the timer goes off to the processes trapframe (before returning to user)
       }
     }
   } else {
@@ -222,4 +225,15 @@ devintr()
     return 0;
   }
 }
+
+void
+save_registers(void){
+  myproc()->oldtrapframe = *(myproc()->trapframe);
+}
+
+void
+restore_registers(void){
+  *(myproc()->trapframe) = myproc()->oldtrapframe;
+}
+
 

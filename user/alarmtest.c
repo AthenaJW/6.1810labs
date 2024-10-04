@@ -23,7 +23,6 @@ void dummy_handler();
 int
 main(int argc, char *argv[])
 {
-  printf("starting tests");
   test0();
   test1();
   test2();

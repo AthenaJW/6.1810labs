@@ -29,18 +29,18 @@ void
 backtrace() {
   uint64 current_fp = r_fp();
   uint64* ptr = (uint64*)current_fp;
-  uint64 current_page = PGROUNDDOWN(current_fp);
+  uint64 current_page = PGROUNDDOWN(current_fp);  
+  uint64 *ra = (uint64 *) *(ptr-1);
+  uint64 next_fp = *(ptr-2);
 
   printf("backtrace:\n");
-  printf("%p\n", ptr-1);
-  
-  uint64 next_fp = *ptr;
-  uint64 *next_ptr;
+  printf("%p\n", ra);
 
   while (PGROUNDDOWN(next_fp) == current_page) {
-    next_ptr = (uint64 *)next_fp;
-    printf("%p\n", next_ptr-1);
-    next_fp = *(next_ptr-2);
+    ra = (uint64 *) (next_fp);
+    ra = ra-1;
+    printf("%p\n", (uint64 *) *ra);
+    next_fp = *(ra-1);
   }
 }
 

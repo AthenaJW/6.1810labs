@@ -1,0 +1,6 @@
+1. a2 and a1 hold function arguments. a2 holds 13.
+2. f is called in the printf call, and g is returned at the end of f
+3. The printf function is at 0x6cc
+4. 3a should be in ra after jal because it is the next address
+5. HE110 World is the output. We would need to change 57616 to reverse it if it was big endian
+6. It will pull some arbritrary value off the stack or from memory
