@@ -54,6 +54,7 @@ sys_sleep(void)
   int n;
   uint ticks0;
 
+  backtrace();
   argint(0, &n);
   if(n < 0)
     n = 0;
@@ -90,4 +91,15 @@ sys_uptime(void)
   xticks = ticks;
   release(&tickslock);
   return xticks;
+}
+
+int sys_sigalarm(int ticks, void (*handler)()) {
+  myproc() -> alarminterval = ticks;
+  myproc() -> handler_function = handler;
+  return 1;
+}
+
+uint64
+sys_sigreturn(void) {
+  return 0;
 }

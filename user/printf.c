@@ -148,18 +148,6 @@ fprintf(int fd, const char *fmt, ...)
 }
 
 void
-backtrace() {
-  uint64 current_fp = r_fp();
-  uint64 current_page = PGROUNDDOWN(current_frame);
-  
-  uint64 next_fp = &(current_frame-16);
-  while (PGROUNDOWN(prev_frame) == current_page) {
-    printf("hi");
-    next_fp = &(current_frame-16);
-  }
-}
-
-void
 printf(const char *fmt, ...)
 {
   va_list ap;

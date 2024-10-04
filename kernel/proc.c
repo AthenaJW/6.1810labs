@@ -111,6 +111,8 @@ allocproc(void)
 {
   struct proc *p;
 
+  proc -> tickspassed = 0;
+
   for(p = proc; p < &proc[NPROC]; p++) {
     acquire(&p->lock);
     if(p->state == UNUSED) {

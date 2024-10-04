@@ -66,7 +66,14 @@ usertrap(void)
 
     syscall();
   } else if((which_dev = devintr()) != 0){
-    // ok
+    if (which_dev == 2) {
+      if (myproc() -> alarminterval > 0) {
+        myproc() -> alarminterval = myproc() -> alarminterval;
+      } else {
+        printf("putting this address into epc %p", myproc() -> handler_function);
+        p->trapframe->epc = (uint64) myproc() -> handler_function;
+      }
+    }
   } else {
     printf("usertrap(): unexpected scause 0x%lx pid=%d\n", r_scause(), p->pid);
     printf("            sepc=0x%lx stval=0x%lx\n", r_sepc(), r_stval());
